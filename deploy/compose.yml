@@ -1,0 +1,26 @@
+# Production stack on the server, installed at /opt/padkos/compose.yml.
+# nginx on the host terminates TLS and proxies to 127.0.0.1:8787.
+name: padkos
+services:
+  app:
+    image: padkos:live
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - padkos-data:/data
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # nginx runs on the host, so requests arrive from the Docker bridge gateway
+      TRUST_PROXY: loopback,uniquelocal
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 1g
+    restart: unless-stopped
+
+volumes:
+  padkos-data:

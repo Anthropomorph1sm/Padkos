@@ -1,0 +1,54 @@
+# docker compose up                     → app on http://localhost:8787 using public routing servers
+# docker compose --profile osrm up      → also builds and runs a private OSRM router for South Africa
+#                                         (first run downloads ~350 MB and needs ~4 GB RAM for a few minutes),
+#                                         then set OSRM_URL=http://osrm:5000 and OSRM_MAX_TABLE=500 for the app.
+services:
+  app:
+    build: .
+    ports:
+      - "8787:8787"
+    volumes:
+      - padkos-data:/data
+    environment:
+      OSRM_URL: ${OSRM_URL:-https://router.project-osrm.org}
+      OSRM_MAX_TABLE: ${OSRM_MAX_TABLE:-100}
+      TOMTOM_API_KEY: ${TOMTOM_API_KEY:-}
+      APP_USER_AGENT: ${APP_USER_AGENT:-PadkosRoadTripPlanner/1.0 (self-hosted)}
+    restart: unless-stopped
+
+  osrm-data:
+    profiles: ["osrm"]
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    volumes:
+      - osrm-data:/data
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        cd /data
+        if [ ! -f south-africa-latest.osrm.mldgr ]; then
+          if [ ! -f south-africa-latest.osm.pbf ]; then
+            apt-get update -qq && apt-get install -y -qq wget >/dev/null
+            wget -q https://download.geofabrik.de/africa/south-africa-latest.osm.pbf
+          fi
+          osrm-extract -p /opt/car.lua south-africa-latest.osm.pbf
+          osrm-partition south-africa-latest.osrm
+          osrm-customize south-africa-latest.osrm
+        fi
+
+  osrm:
+    profiles: ["osrm"]
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    depends_on:
+      osrm-data:
+        condition: service_completed_successfully
+    volumes:
+      - osrm-data:/data
+    command: ["osrm-routed", "--algorithm", "mld", "--max-table-size", "500", "/data/south-africa-latest.osrm"]
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+
+volumes:
+  padkos-data:
+  osrm-data:
