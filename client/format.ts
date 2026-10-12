@@ -24,6 +24,15 @@ export function clock(d: Date): string {
   return d.toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
+/** Tomorrow at 07:00, as a datetime-local value: the departure until the traveller picks one. */
+export function defaultDeparture(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(7, 0, 0, 0);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T07:00`;
+}
+
 export function dayLabel(d: Date): string {
   return d.toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" });
 }

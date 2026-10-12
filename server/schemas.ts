@@ -8,6 +8,19 @@ export const pointSchema = z.object({
   name: z.string().max(200).optional(),
 });
 
+const STAY_KINDS = ["hotel", "motel", "guest_house", "hostel", "chalet", "apartment", "camp_site", "caravan_site", "alpine_hut", "wilderness_hut"] as const;
+
+export const savedStaySchema = z.object({
+  id: z.string().min(1).max(64),
+  name: z.string().max(200),
+  price: finite.min(0).max(1_000_000).optional(),
+  url: z.string().max(2000).regex(/^https?:\/\//i, "must be an http(s) link").optional(),
+  lat: finite.min(-90).max(90).optional(),
+  lng: finite.min(-180).max(180).optional(),
+  kind: z.enum(STAY_KINDS).optional(),
+  chosen: z.boolean().optional(),
+});
+
 export const placeSchema = z.object({
   id: z.string().min(1).max(64),
   name: z.string().max(200),
@@ -23,6 +36,7 @@ export const placeSchema = z.object({
   nights: z.number().int().min(1).max(30).optional(),
   departTime: z.string().regex(/^([01]?\d|2[0-3]):[0-5]\d$/, "use HH:MM").optional(),
   notes: z.string().max(2000).optional(),
+  stays: z.array(savedStaySchema).max(20).optional(),
 });
 
 export const settingsSchema = z.object({

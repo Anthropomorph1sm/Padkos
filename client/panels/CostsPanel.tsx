@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { convertEconomy, DEFAULT_FUEL_PRICES, estimateFuel, formatRand } from "../../shared/fuel";
+import { formatRandRange, type StayBudget } from "../../shared/stays";
 import { totalTolls } from "../../shared/tolls";
 import type { FuelSettings, FuelType, TollHit } from "../../shared/types";
 import { km } from "../format";
@@ -12,15 +13,20 @@ interface Props {
   onFuel: (patch: Partial<FuelSettings>) => void;
   onPassengers: (n: number) => void;
   onTollFee?: (id: string, fee: number | null) => void;
+  /** saved places to stay; omitted on other people's routes */
+  accommodation?: StayBudget;
 }
 
 const round1 = (v: number) => Math.round(v * 10) / 10;
 
-export function CostsPanel({ distance, fuel, passengers, tolls, onFuel, onPassengers, onTollFee }: Props) {
+export function CostsPanel({ distance, fuel, passengers, tolls, onFuel, onPassengers, onTollFee, accommodation }: Props) {
   const [region, setRegion] = useState<"inland" | "coastal">("inland");
   const est = estimateFuel(distance, fuel);
   const tollTotal = totalTolls(tolls);
   const total = est.cost + tollTotal;
+  const stays = accommodation && accommodation.nights > 0 ? accommodation : null;
+  const totalMin = total + (stays?.min ?? 0);
+  const totalMax = total + (stays?.max ?? 0);
 
   const switchUnit = (unit: FuelSettings["unit"]) => {
     if (unit === fuel.unit) return;
@@ -206,18 +212,40 @@ export function CostsPanel({ distance, fuel, passengers, tolls, onFuel, onPassen
               <td>Tolls</td>
               <td>{formatRand(tollTotal)}</td>
             </tr>
+            {stays && (
+              <tr>
+                <td>
+                  Accommodation ({stays.nights} night{stays.nights === 1 ? "" : "s"})
+                  {stays.unbudgeted.length > 0 && stays.budgetedNights > 0 && (
+                    <span className="muted small"> ∙ {stays.nights - stays.budgetedNights} not priced</span>
+                  )}
+                </td>
+                <td>{stays.budgetedNights > 0 ? formatRandRange(stays.min, stays.max) : "not priced"}</td>
+              </tr>
+            )}
             <tr className="total">
               <td>Total</td>
-              <td>{formatRand(total)}</td>
+              <td>{formatRandRange(totalMin, totalMax)}</td>
             </tr>
             {passengers > 1 && (
               <tr>
                 <td>Per person ({passengers})</td>
-                <td>{formatRand(total / passengers)}</td>
+                <td>{formatRandRange(totalMin / passengers, totalMax / passengers)}</td>
               </tr>
             )}
           </tbody>
         </table>
+        {stays && stays.unbudgeted.length > 0 && (
+          <p className="small muted" style={{ margin: 0 }}>
+            {stays.budgetedNights === 0 ? "Accommodation isn't in the total yet" : "The total leaves out the nights without a price"}: save places to stay with a nightly
+            price on the Stays tab.
+          </p>
+        )}
+        {stays && stays.budgetedNights > 0 && stays.min !== stays.max && (
+          <p className="small muted" style={{ margin: 0 }}>
+            The range runs from the cheapest to the dearest place you saved at each stop.
+          </p>
+        )}
       </div>
     </>
   );

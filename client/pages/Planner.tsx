@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { useApp } from "../context";
-import { MapView, type ClickAction, type MapAlternative } from "../components/MapView";
+import { MapView, type ClickAction, type MapAlternative, type MapStay } from "../components/MapView";
 import { StopsPanel, MAX_STOPS } from "../panels/StopsPanel";
 import { DirectionsPanel } from "../panels/DirectionsPanel";
 import { AlternativesPanel } from "../panels/AlternativesPanel";
@@ -10,18 +10,22 @@ import { CostsPanel } from "../panels/CostsPanel";
 import { RoadPanel, type IssuesState } from "../panels/RoadPanel";
 import { ExplorePanel, DEFAULT_CATEGORIES, EMPTY_EXPLORE, type ExploreState } from "../panels/ExplorePanel";
 import { SharePanel, type SavedInfo } from "../panels/SharePanel";
+import { savedFromOption, StaysPanel, type StaySearchState } from "../panels/StaysPanel";
 import { emptyTrip, newId, tripPoints, type ImportResult } from "../../shared/formats";
 import { estimateFuel, formatRand } from "../../shared/fuel";
+import { haversine } from "../../shared/geo";
 import { isInSouthAfrica } from "../../shared/southAfrica";
+import { MAX_SAVED_STAYS, overnights, stayBudget, type AffiliateIds } from "../../shared/stays";
 import { findTolls, totalTolls } from "../../shared/tolls";
 import { distinguishingTowns } from "../../shared/towns";
-import type { Attraction, AttractionCategory, Place, RouteAlternative, RoutePlan, Trip, Visibility } from "../../shared/types";
-import { duration, km, storage } from "../format";
+import type { Attraction, AttractionCategory, Place, RouteAlternative, RoutePlan, SavedStay, Trip, Visibility } from "../../shared/types";
+import { defaultDeparture, duration, km, storage } from "../format";
 
-type Tab = "stops" | "directions" | "alternatives" | "costs" | "road" | "explore" | "share";
+type Tab = "stops" | "directions" | "stays" | "alternatives" | "costs" | "road" | "explore" | "share";
 const TABS: Array<{ id: Tab; label: string; needsPlan?: boolean }> = [
   { id: "stops", label: "Stops" },
   { id: "directions", label: "Directions", needsPlan: true },
+  { id: "stays", label: "Stays", needsPlan: true },
   { id: "alternatives", label: "Alternatives", needsPlan: true },
   { id: "costs", label: "Costs", needsPlan: true },
   { id: "road", label: "Road info", needsPlan: true },
@@ -76,6 +80,19 @@ export function Planner() {
   const [highlight, setHighlight] = useState<string | null>(null);
   const [addingAttraction, setAddingAttraction] = useState<string | null>(null);
   const exploreCtrl = useRef<AbortController | null>(null);
+  const [stayRadius, setStayRadius] = useState(10);
+  const [stayResults, setStayResults] = useState<Record<string, StaySearchState>>({});
+  const [activeStay, setActiveStay] = useState<string | null>(null);
+  const [affiliates, setAffiliates] = useState<AffiliateIds>({});
+
+  useEffect(() => {
+    api
+      .config()
+      .then((c) => setAffiliates(c.affiliates ?? {}))
+      .catch(() => {
+        // booking links work without affiliate ids
+      });
+  }, []);
 
   const update = useCallback((fn: (t: Trip) => Trip) => setTrip((t) => fn(t)), []);
   const updateSettings = useCallback(
@@ -101,6 +118,7 @@ export function Planner() {
           return;
         }
         resetDerived();
+        setStayResults({});
         setTrip(r.trip);
         setPlan(r.plan);
         setPlanSig(r.plan ? signature(r.trip) : null);
@@ -121,6 +139,17 @@ export function Planner() {
   const planCurrent = !!plan && planSig === signature(trip);
   const tolls = useMemo(() => (plan ? findTolls(plan.legs.map((l) => l.geometry), trip.tollOverrides) : []), [plan, trip.tollOverrides]);
   const fuel = plan ? estimateFuel(plan.distance, trip.settings.fuel) : null;
+
+  const departure = trip.settings.departure || defaultDeparture();
+  const overnightList = useMemo(
+    () => (plan && planCurrent ? overnights(trip, plan, points, new Date(departure)) : []),
+    [trip, plan, planCurrent, points, departure],
+  );
+  const budget = useMemo(() => stayBudget(overnightList), [overnightList]);
+  const orphaned = useMemo(() => {
+    const sleeping = new Set(overnightList.map((o) => o.place.id));
+    return [...trip.stops, ...(trip.end && !trip.settings.roundTrip ? [trip.end] : [])].filter((p) => p.stays?.length && !sleeping.has(p.id));
+  }, [overnightList, trip.stops, trip.end, trip.settings.roundTrip]);
 
   /** Clear results that belong to the previous route. Attractions can be kept when the route only gained a stop. */
   function resetDerived(opts: { keepExplore?: boolean } = {}) {
@@ -388,6 +417,76 @@ export function Planner() {
     }
   };
 
+  // ------------------------------------------------------------- stays
+  const setStays = useCallback(
+    (placeId: string, fn: (stays: SavedStay[]) => SavedStay[]) =>
+      update((t) => {
+        const apply = (p: Place): Place => {
+          if (p.id !== placeId) return p;
+          const stays = fn(p.stays ?? []);
+          return { ...p, stays: stays.length ? stays : undefined };
+        };
+        return { ...t, stops: t.stops.map(apply), end: t.end ? apply(t.end) : t.end };
+      }),
+    [update],
+  );
+
+  const saveOption = (placeId: string, s: SavedStay) =>
+    setStays(placeId, (list) => (list.some((x) => x.id === s.id) || list.length >= MAX_SAVED_STAYS ? list : [...list, s]));
+
+  /** Look up accommodation around every overnight stop (or just `ids`). */
+  const searchStays = async (ids?: string[]) => {
+    const places = [...new Map(overnightList.filter((o) => !ids || ids.includes(o.place.id)).map((o) => [o.place.id, o.place])).values()];
+    if (!places.length) return;
+    const radiusKm = stayRadius;
+    const patch = (entries: Array<[string, (s: StaySearchState | undefined) => StaySearchState]>) =>
+      setStayResults((r) => {
+        const n = { ...r };
+        for (const [id, f] of entries) n[id] = f(n[id]);
+        return n;
+      });
+    patch(places.map((p) => [p.id, (s) => ({ ...s, loading: true, error: undefined })]));
+    for (let i = 0; i < places.length; i += 40) {
+      const batch = places.slice(i, i + 40);
+      try {
+        const res = await api.stays(batch.map((p) => ({ id: p.id, lat: p.lat, lng: p.lng })), radiusKm);
+        patch(
+          res.map((x) => [
+            x.id,
+            (s) =>
+              x.error
+                ? { ...s, loading: false, error: "The map data service is busy. Try again in a minute." }
+                : { loading: false, list: x.stays ?? [], radiusKm },
+          ]),
+        );
+      } catch (e) {
+        patch(batch.map((p) => [p.id, (s) => ({ ...s, loading: false, error: (e as Error).message })]));
+      }
+    }
+  };
+
+  const mapStays: MapStay[] = useMemo(() => {
+    if (tab !== "stays") return [];
+    const out: MapStay[] = [];
+    const seen = new Set<string>();
+    for (const o of overnightList) {
+      if (activeStay && o.place.id !== activeStay) continue;
+      for (const s of o.place.stays ?? []) {
+        if (s.lat == null || s.lng == null || seen.has(s.id)) continue;
+        seen.add(s.id);
+        const distance = Math.round(haversine([o.place.lat, o.place.lng], [s.lat, s.lng]));
+        out.push({ stay: { id: s.id, name: s.name, lat: s.lat, lng: s.lng, kind: s.kind ?? "hotel", distance }, saved: true });
+      }
+      for (const r of stayResults[o.place.id]?.list ?? []) {
+        if (seen.has(r.id)) continue;
+        seen.add(r.id);
+        out.push({ stay: r, saved: false, onSave: () => saveOption(o.place.id, savedFromOption(r)) });
+      }
+    }
+    return out.slice(0, 400);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, overnightList, activeStay, stayResults]);
+
   // ------------------------------------------------------------- saving
   const save = async (visibility: Visibility) => {
     const u = await requireSignIn("Sign in to save trips, share them and vote on community routes.");
@@ -424,6 +523,7 @@ export function Planner() {
 
   const onImport = (r: ImportResult) => {
     resetDerived();
+    setStayResults({});
     setTrip(r.trip);
     setPlan(r.plan);
     setPlanSig(r.plan ? signature(r.trip) : null);
@@ -434,6 +534,7 @@ export function Planner() {
   const newTrip = () => {
     if (!confirm("Start a new trip? Unsaved changes to this one will be lost.")) return;
     resetDerived();
+    setStayResults({});
     setTrip(emptyTrip());
     setPlan(null);
     setPlanSig(null);
@@ -510,6 +611,33 @@ export function Planner() {
               }
             />
           )}
+          {tab === "stays" && plan && (
+            <StaysPanel
+              overnights={overnightList}
+              budget={budget}
+              orphaned={orphaned}
+              destination={trip.settings.roundTrip ? null : trip.end}
+              passengers={trip.settings.passengers}
+              affiliates={affiliates}
+              radiusKm={stayRadius}
+              setRadius={setStayRadius}
+              results={stayResults}
+              onSearch={searchStays}
+              setStays={setStays}
+              setDestinationNights={(nights) => update((t) => (t.end ? { ...t, end: { ...t.end, nights } } : t))}
+              onSleepHere={(id) =>
+                update((t) =>
+                  t.end?.id === id
+                    ? { ...t, end: { ...t.end, nights: t.end.nights || 1 } }
+                    : { ...t, stops: t.stops.map((p) => (p.id === id ? { ...p, overnight: true } : p)) },
+                )
+              }
+              active={activeStay}
+              setActive={setActiveStay}
+              onFocus={(lat, lng) => focusOn(lat, lng, 14)}
+              stale={!planCurrent}
+            />
+          )}
           {tab === "alternatives" && plan && (
             <AlternativesPanel
               plan={plan}
@@ -536,6 +664,7 @@ export function Planner() {
               tolls={tolls}
               onFuel={(patch) => updateSettings({ fuel: { ...trip.settings.fuel, ...patch } })}
               onPassengers={(passengers) => updateSettings({ passengers })}
+              accommodation={budget}
               onTollFee={(id, fee) =>
                 update((t) => {
                   const o = { ...(t.tollOverrides ?? {}) };
@@ -638,6 +767,7 @@ export function Planner() {
           highlightAttraction={highlight}
           tolls={tab === "road" || tab === "costs" ? tolls : []}
           issues={issues.issues ?? []}
+          stays={mapStays}
           clickActions={clickActions}
           focus={focus}
           fitKey={fitKey}

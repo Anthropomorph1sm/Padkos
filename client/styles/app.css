@@ -724,6 +724,65 @@ textarea.input {
   opacity: 0.85;
 }
 
+/* ------------------------------------------------------------------ stays */
+
+.stay-card {
+  display: grid;
+  gap: 8px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--line);
+}
+.stay-card.active {
+  border-left-color: var(--blue);
+}
+.stay-links {
+  gap: 10px;
+}
+.btn.link-title {
+  padding: 0;
+  min-height: 0;
+  font-size: var(--step-0);
+  text-align: left;
+}
+.saved-stays > li.saved-stay {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+.saved-stay .pick {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--asphalt-2);
+  border-radius: 50%;
+  background: #fff;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+.saved-stay.chosen .pick {
+  background: var(--green);
+  border-color: var(--green);
+}
+.saved-stay .price {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+.saved-stay .price input {
+  width: 96px;
+}
+.add-own {
+  display: grid;
+  gap: 6px;
+}
+.found {
+  display: grid;
+  gap: 4px;
+}
+
 /* ------------------------------------------------------------------ lists */
 
 .list {
@@ -1092,6 +1151,24 @@ textarea.input {
   height: 22px;
   line-height: 18px;
   font-size: 12px;
+}
+.stay-pin {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  background: var(--blue);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px var(--blue);
+  color: #fff;
+  font-size: 11px;
+  line-height: 14px;
+  text-align: center;
+  font-weight: 800;
+}
+.stay-pin.saved {
+  background: var(--green);
+  box-shadow: 0 0 0 1px var(--green);
 }
 .map-popup {
   display: grid;

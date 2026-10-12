@@ -1,6 +1,6 @@
 # Padkos: a South African road-trip planner
 
-Plan road trips across South Africa with up to 100 stops. Padkos puts the stops in the best order, gives turn-by-turn directions with a day-by-day schedule, adds up fuel and toll costs, finds attractions along the way, and lets you share routes without giving away your home address.
+Plan road trips across South Africa with up to 100 stops. Padkos puts the stops in the best order, gives turn-by-turn directions with a day-by-day schedule, adds up fuel, toll and accommodation costs, finds attractions and places to stay along the way, and lets you share routes without giving away your home address.
 
 ## What it does
 
@@ -9,6 +9,7 @@ Plan road trips across South Africa with up to 100 stops. Padkos puts the stops 
 | **Route planning** | Start, destination and up to **100 stops**. Stops are put in the best order by time or by distance; you can also keep your own order or drag stops around. Round trips work too. Add stops by search, by clicking the map, or by pasting a list of place names. |
 | **Directions & times** | Turn-by-turn directions per leg. A schedule built from your departure time, how long you stay at each stop and your daily driving limit shows where you'll sleep. Printable. |
 | **Tolls** | Every toll plaza the route passes (63 SA plazas, positions from OpenStreetMap), with approximate Class 1 fees you can edit. Ramp plazas only count when the route uses the ramp. |
+| **Places to stay** | For every night away (overnight stops from the schedule, plus nights at the destination), hotels, guest houses, self-catering, backpackers and campsites within 5–30 km, from OpenStreetMap. Each stop links to Booking.com, Airbnb and Agoda searches with the dates and group size filled in. Save the places you're considering with a nightly price, or add ones found elsewhere; the Costs tab adds accommodation as a range from the cheapest to the dearest saved place per stop, or the exact price once you pick one. Saved places never appear on shared copies. |
 | **Road works** | Roads under construction near the route, from OpenStreetMap. Add a TomTom API key for live closures, road works and incidents. |
 | **Fuel cost** | Economy in L/100 km or km/L (switching converts the number), fuel type, pump price with inland/coastal presets, tank size → fill-ups needed, cost per person. |
 | **Alternative routes** | For each leg, up to three alternatives, compared on time, distance and tolls ("via Kimberley: +1 h 27 min, −R203 tolls"). Pick one to use it. |
@@ -50,7 +51,7 @@ npm run smoke        # live check against a running server and the real map serv
 
 Pushes to `main` run `.github/workflows/deploy.yml`: typecheck, tests and `npm audit`, then the Docker image is built on the runner and streamed over SSH to the server. The server's `padkos-deploy` key can only run `/usr/local/bin/padkos-deploy` (`deploy/padkos-deploy.sh`), which loads the image, restarts `/opt/padkos/compose.yml` (`deploy/compose.yml`) and rolls back if `/api/health` fails. nginx on the host terminates TLS and proxies to `127.0.0.1:8787`. Runtime settings live in `/opt/padkos/.env` on the server.
 
-Repository secrets (environment `production`): `DEPLOY_SSH_KEY` (private key), `DEPLOY_HOST`, `DEPLOY_KNOWN_HOSTS` (`ssh-keyscan -t ed25519 <host>`).
+Repository secrets (environment `production`): `DEPLOY_SSH_KEY` (private key), `DEPLOY_HOST`, `DEPLOY_KNOWN_HOSTS` (`ssh-keyscan -t ed25519 <host>`). Environment variable: `SITE_URL` (e.g. `https://daneeln.co.za`), used for the post-deploy health check.
 
 ## Configuration
 
@@ -64,6 +65,7 @@ All optional; see `.env.example`. The server reads `.env` automatically.
 | `PHOTON_URL`, `NOMINATIM_URL` | komoot / OSM | Place search and reverse geocoding |
 | `OVERPASS_URLS` | three public mirrors | Map data for attractions and road works (tried in turn) |
 | `TOMTOM_API_KEY` | — | Enables live traffic incidents and road works |
+| `BOOKING_AFFILIATE_ID`, `AGODA_AFFILIATE_ID` | — | Added to the Booking.com (`aid`) and Agoda (`cid`) search links |
 | `APP_USER_AGENT` | `PadkosRoadTripPlanner/1.0 (self-hosted)` | Identifies your deployment to OSM services. Put your site or contact here |
 | `TRUST_PROXY` | `loopback` | Express `trust proxy`: which hops may set `X-Forwarded-For`. Use `loopback,uniquelocal` when a host proxy forwards into Docker |
 | `PRIVACY_RADIUS_M` | `5000` | How much route line is removed around hidden places |

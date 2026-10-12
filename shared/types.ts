@@ -19,11 +19,55 @@ export interface Place {
   approximate?: boolean;
   /** Overnight choice: true = sleep here, false = never sleep here, undefined = automatic */
   overnight?: boolean;
-  /** Nights spent here when sleeping here (default 1). */
+  /** Nights spent here when sleeping here (default 1). On the destination: nights staying there (unset = none). */
   nights?: number;
   /** "HH:MM" to leave after sleeping here (default: the trip's departure time). */
   departTime?: string;
   notes?: string;
+  /** Places to stay that the traveller saved for a night here. */
+  stays?: SavedStay[];
+}
+
+export type StayKind =
+  | "hotel"
+  | "motel"
+  | "guest_house"
+  | "hostel"
+  | "chalet"
+  | "apartment"
+  | "camp_site"
+  | "caravan_site"
+  | "alpine_hut"
+  | "wilderness_hut";
+
+/** A place to stay saved against an overnight stop. */
+export interface SavedStay {
+  id: string;
+  name: string;
+  /** Rand per night for the whole group. */
+  price?: number;
+  /** Listing or website link (http/https only). */
+  url?: string;
+  lat?: number;
+  lng?: number;
+  kind?: StayKind;
+  /** The one the traveller picked: the budget then uses its price alone. */
+  chosen?: boolean;
+}
+
+/** Accommodation found on OpenStreetMap near an overnight stop. */
+export interface StayOption {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  kind: StayKind;
+  /** straight-line distance from the stop, in metres */
+  distance: number;
+  stars?: number;
+  website?: string;
+  phone?: string;
+  town?: string;
 }
 
 export type FuelEconomyUnit = "l100" | "kml";

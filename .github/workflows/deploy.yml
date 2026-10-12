@@ -31,7 +31,9 @@ jobs:
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    environment: production
+    environment:
+      name: production
+      url: ${{ vars.SITE_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -57,4 +59,6 @@ jobs:
             | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "padkos-deploy@$DEPLOY_HOST"
 
       - name: Check the live site
-        run: curl -fsS --retry 5 --retry-delay 3 https://daneeln.co.za/api/health
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: curl -fsS --retry 5 --retry-delay 3 "${SITE_URL%/}/api/health"

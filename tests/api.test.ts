@@ -194,6 +194,43 @@ describe("saved routes and privacy", () => {
   });
 });
 
+describe("saved places to stay", () => {
+  const stay = { id: "node/1", name: "Lord Milner Hotel", price: 1800, url: "https://example.com/milner", kind: "hotel" as const, chosen: true };
+
+  it("keeps them for the owner and never shares them", async () => {
+    const owner = await signUp("owner");
+    const { trip, plan } = sampleTrip();
+    for (const roundTrip of [false, true]) {
+      const t = {
+        ...trip,
+        settings: { ...trip.settings, roundTrip },
+        stops: [{ ...trip.stops[0], overnight: true, stays: [stay] }, trip.stops[1]],
+        end: { ...trip.end!, nights: 2, stays: [{ id: "own-1", name: "Auntie's spare room", price: 0 }] },
+      };
+      const created = await owner.post("/api/routes").set("X-Padkos", "1").send({ trip: t, plan, visibility: "public" });
+      expect(created.status).toBe(201);
+      const id = created.body.route.id;
+      const mine = (await owner.get(`/api/routes/${id}`)).body.route;
+      expect(mine.trip.stops[0].stays).toEqual([stay]);
+      expect(mine.trip.end.nights).toBe(2);
+      const view = (await request(app).get(`/api/routes/${id}`).expect(200)).body.route;
+      expect(view.trip.stops[0].stays).toBeUndefined();
+      expect(view.trip.end.stays).toBeUndefined();
+      expect(JSON.stringify(view)).not.toContain("Milner");
+      expect(JSON.stringify(view)).not.toContain("spare room");
+    }
+  });
+
+  it("rejects links that aren't http(s)", async () => {
+    const owner = await signUp("owner");
+    const { trip, plan } = sampleTrip();
+    const t = { ...trip, stops: [{ ...trip.stops[0], stays: [{ ...stay, url: "javascript:alert(1)" }] }] };
+    const res = await owner.post("/api/routes").set("X-Padkos", "1").send({ trip: t, plan });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/http/);
+  });
+});
+
 describe("votes and community", () => {
   it("counts votes, prevents self-voting and ranks routes", async () => {
     const owner = await signUp("owner");

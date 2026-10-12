@@ -67,10 +67,11 @@ export async function obscureTrip(
   out.stops = await Promise.all(
     out.stops.map(async (s) => {
       if (s.private) return hide(s);
-      const { notes: _n, ...rest } = s; // personal notes are never shared
+      const { notes: _n, stays: _s, ...rest } = s; // personal notes and where they sleep are never shared
       return { ...rest } as Place;
     }),
   );
+  if (out.end) delete out.end.stays; // round trips keep the (unhidden) end object
   out.tollOverrides = trip.tollOverrides;
 
   let outPlan: RoutePlan | null = null;

@@ -9,6 +9,7 @@ import { reverse, search } from "../services/geocode";
 import { alternativesBetween } from "../services/osrm";
 import { assertInSouthAfrica, insertionIndex, MAX_STOPS, plan } from "../services/planner";
 import { roadIssues } from "../services/roadworks";
+import { staysNear } from "../services/stays";
 import { asyncHandler } from "./util";
 
 /** Pause before automatically retrying failed stretches (overridable for tests). */
@@ -29,6 +30,7 @@ export function planningRouter(): Router {
       maxStops: MAX_STOPS,
       liveTraffic: !!config.tomtomKey,
       routingServer: new URL(config.osrmUrl).host,
+      affiliates: { booking: config.bookingAffiliateId || undefined, agoda: config.agodaAffiliateId || undefined },
     });
   });
 
@@ -188,6 +190,21 @@ export function planningRouter(): Router {
       }
       send({ type: "done", failed: failed.sort((a, b) => a - b) });
       res.end();
+    }),
+  );
+
+  r.post(
+    "/stays",
+    rateLimit("stays", 20, 60_000),
+    asyncHandler(async (req, res) => {
+      const { points, radiusKm } = z
+        .object({
+          points: z.array(pointSchema.extend({ id: z.string().min(1).max(64) })).min(1).max(40),
+          radiusKm: z.number().min(1).max(30),
+        })
+        .parse(req.body);
+      assertInSouthAfrica(points);
+      res.json({ results: await staysNear(points, radiusKm) });
     }),
   );
 
