@@ -8,11 +8,20 @@ import { Community } from "./pages/Community";
 import { RouteView } from "./pages/RouteView";
 
 function BrandMark() {
+  // same drawing as public/favicon.svg: a road running to a sunrise
   return (
-    <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
-      <rect width="32" height="32" rx="6" fill="#3a454b" />
-      <path d="M9 30 L14 2 M23 30 L18 2" stroke="#F2B705" strokeWidth="2.5" />
-      <path d="M16 6v4M16 15v4M16 24v4" stroke="#fff" strokeWidth="2" />
+    <svg className="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
+      <clipPath id="brand-tile">
+        <rect width="64" height="64" rx="14" />
+      </clipPath>
+      <g clipPath="url(#brand-tile)">
+        <rect width="64" height="64" fill="#232B2F" />
+        <circle cx="32" cy="25" r="11" fill="#F2B705" />
+        <rect y="25" width="64" height="39" fill="#3A454B" />
+        <path d="M6 64 L29.5 25 H34.5 L58 64 Z" fill="#232B2F" />
+        <path d="M7.5 64 L30 25 M56.5 64 L34 25" stroke="#F2B705" strokeWidth="3.5" />
+        <path d="M32 29v3.5 M32 37v5.5 M32 48v8.5" stroke="#fff" strokeWidth="2.6" />
+      </g>
     </svg>
   );
 }

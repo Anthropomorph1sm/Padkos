@@ -318,8 +318,10 @@ textarea.input {
   letter-spacing: -0.01em;
 }
 .brand-mark {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1.5px #4b575d; /* the tile's dark sky would vanish into the top bar */
 }
 .nav {
   display: flex;

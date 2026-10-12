@@ -1,6 +1,10 @@
+<p align="center"><img src="docs/banner.png" alt="Padkos: road trips across South Africa, planned properly" width="100%"></p>
+
 # Padkos: a South African road-trip planner
 
 Plan road trips across South Africa with up to 100 stops. Padkos puts the stops in the best order, gives turn-by-turn directions with a day-by-day schedule, adds up fuel, toll and accommodation costs, finds attractions and places to stay along the way, and lets you share routes without giving away your home address.
+
+![A Garden Route trip from Cape Town to Gqeberha in the planner: a day-by-day schedule with overnight stops on the left, the route on the map on the right](docs/screenshot-planner.png)
 
 ## What it does
 
@@ -18,6 +22,8 @@ Plan road trips across South Africa with up to 100 stops. Padkos puts the stops 
 | **Google Maps** | Opens the whole trip in Google Maps, split into linked parts of up to 10 places (Google's limit), or any stretch you choose. |
 | **Sharing & community** | Private, anyone-with-the-link, or public. Shared copies replace the start and end (and any stop you mark private) with the town they're in, cut the route line within 5 km of them, and drop directions and notes there. Public routes appear on Community routes, sorted by popular, top or new, with up/down votes, search and province filters. Anyone can copy a route into their own trips. |
 | **South Africa only** | Search is limited to SA, and every point is checked against the SA border (Lesotho and Eswatini excluded) in the browser and on the server. |
+
+![The Stays tab for two nights in Knysna: saved places with nightly prices, the budget range, and accommodation from OpenStreetMap on the map](docs/screenshot-stays.png)
 
 ## Running it
 
