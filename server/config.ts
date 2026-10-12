@@ -36,6 +36,10 @@ export const config = {
   /** Optional: enables live traffic incidents and road works from TomTom. */
   tomtomKey: env.TOMTOM_API_KEY ?? "",
 
+  /** Optional affiliate ids added to the Booking.com and Agoda search links. */
+  bookingAffiliateId: env.BOOKING_AFFILIATE_ID ?? "",
+  agodaAffiliateId: env.AGODA_AFFILIATE_ID ?? "",
+
   /** Identify the app to OpenStreetMap services as their usage policies require. */
   userAgent: env.APP_USER_AGENT ?? "PadkosRoadTripPlanner/1.0 (self-hosted)",
 

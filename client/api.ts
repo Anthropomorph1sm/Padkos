@@ -6,6 +6,7 @@ import type {
   RoutePlan,
   SavedRoute,
   SavedRouteSummary,
+  StayOption,
   Trip,
   Visibility,
 } from "../shared/types";
@@ -76,7 +77,10 @@ interface PlanPoint {
 }
 
 export const api = {
-  config: () => call<{ maxStops: number; liveTraffic: boolean; routingServer: string }>("GET", "/config"),
+  config: () =>
+    call<{ maxStops: number; liveTraffic: boolean; routingServer: string; affiliates: { booking?: string; agoda?: string } }>("GET", "/config"),
+  stays: (points: Array<{ id: string; lat: number; lng: number }>, radiusKm: number, signal?: AbortSignal) =>
+    call<{ results: Array<{ id: string; stays?: StayOption[]; error?: string }> }>("POST", "/stays", { points, radiusKm }, signal).then((r) => r.results),
   search: (q: string, near?: { lat: number; lng: number }, signal?: AbortSignal) =>
     call<{ results: GeoResult[] }>(
       "GET",

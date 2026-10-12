@@ -1,7 +1,7 @@
 import { Fragment, useMemo, useState } from "react";
 import { buildSchedule, type ScheduleStop } from "../../shared/schedule";
 import type { Place, RoutePlan, TollHit, Trip } from "../../shared/types";
-import { clock, dayLabel, distanceShort, duration, km } from "../format";
+import { clock, dayLabel, defaultDeparture, distanceShort, duration, km } from "../format";
 
 const ARROWS: Record<string, string> = {
   left: "←",
@@ -19,14 +19,6 @@ function arrowFor(type: string, modifier?: string) {
   if (type === "arrive") return "◆";
   if (type.includes("roundabout") || type.includes("rotary")) return "↻";
   return (modifier && ARROWS[modifier]) || "↑";
-}
-
-function defaultDeparture(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  d.setHours(7, 0, 0, 0);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T07:00`;
 }
 
 const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;

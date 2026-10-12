@@ -3,7 +3,8 @@ import L from "leaflet";
 import { Circle, MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import { decodePolyline, type LatLng } from "../../shared/geo";
 import { ZA_CENTER } from "../../shared/southAfrica";
-import type { Attraction, Place, RoadIssue, TollHit } from "../../shared/types";
+import { STAY_KIND_LABELS } from "../../shared/stays";
+import type { Attraction, Place, RoadIssue, StayOption, TollHit } from "../../shared/types";
 import { distanceShort, duration, km } from "../format";
 import { formatRand } from "../../shared/fuel";
 
@@ -18,6 +19,12 @@ export interface MapAlternative {
   label: string;
   selected: boolean;
   onPick: () => void;
+}
+
+export interface MapStay {
+  stay: StayOption;
+  saved: boolean;
+  onSave?: () => void;
 }
 
 export interface ClickAction {
@@ -38,6 +45,7 @@ interface Props {
   highlightAttraction?: string | null;
   tolls?: TollHit[];
   issues?: RoadIssue[];
+  stays?: MapStay[];
   clickActions?: ClickAction[];
   /** draw an "approximate area" ring around these places (obscured shared routes) */
   approximate?: Place[];
@@ -75,6 +83,9 @@ function attractionIcon(a: Attraction, hot: boolean) {
     iconSize: hot ? [22, 22] : [18, 18],
   });
 }
+
+const stayIcon = (saved: boolean) =>
+  L.divIcon({ className: "marker-plate", html: `<div class="stay-pin${saved ? " saved" : ""}">⌂</div>`, iconSize: [18, 18] });
 
 function FitBounds({ points, legs, fitKey }: { points: Place[]; legs: LatLng[][]; fitKey?: string }) {
   const map = useMap();
@@ -241,6 +252,24 @@ export function MapView(props: Props) {
             </Marker>
           );
         })}
+
+        {props.stays?.map(({ stay: s, saved, onSave }) => (
+          <Marker key={`stay-${s.id}`} position={[s.lat, s.lng]} icon={stayIcon(saved)} zIndexOffset={saved ? 800 : 0}>
+            <Popup>
+              <div className="map-popup">
+                <strong>{s.name}</strong>
+                <span className="small muted">
+                  {STAY_KIND_LABELS[s.kind]} ∙ {distanceShort(s.distance)} from the stop
+                </span>
+                {onSave && (
+                  <button className="btn small primary" onClick={onSave} disabled={saved}>
+                    {saved ? "Saved" : "Save"}
+                  </button>
+                )}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
 
         {tolls.map((t, i) => (
           <Marker key={`toll-${t.id}-${i}`} position={[t.lat, t.lng]} icon={plateIcon("R", "toll")}>
