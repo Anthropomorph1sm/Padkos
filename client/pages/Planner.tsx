@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { useApp } from "../context";
 import { MapView, type ClickAction, type MapAlternative, type MapStay } from "../components/MapView";
@@ -53,6 +53,7 @@ export function Planner() {
   const { toast, requireSignIn, user } = useApp();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const draft = useRef(storage.get<Draft>(DRAFT_KEY));
 
   const [trip, setTrip] = useState<Trip>(draft.current?.trip ?? emptyTrip());
@@ -134,6 +135,17 @@ export function Planner() {
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.get("route"), user?.id]);
+
+  // start a fresh trip: /?new=1 (the planner otherwise reopens the local draft)
+  const handledNew = useRef<string | null>(null);
+  useEffect(() => {
+    if (!params.has("new") || handledNew.current === location.key) return;
+    handledNew.current = location.key; // StrictMode runs this twice; only ask once
+    newTrip();
+    params.delete("new");
+    setParams(params, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.has("new"), location.key]);
 
   const points = useMemo(() => tripPoints(trip), [trip]);
   const planCurrent = !!plan && planSig === signature(trip);
@@ -531,8 +543,10 @@ export function Planner() {
     setFitKey(`import-${Date.now()}`);
   };
 
-  const newTrip = () => {
-    if (!confirm("Start a new trip? Unsaved changes to this one will be lost.")) return;
+  const hasContent = !!(trip.start || trip.end || trip.stops.length);
+
+  function newTrip() {
+    if (hasContent && !confirm("Start a new trip? Unsaved changes to this one will be lost.")) return;
     resetDerived();
     setStayResults({});
     setTrip(emptyTrip());
@@ -540,7 +554,7 @@ export function Planner() {
     setPlanSig(null);
     setSaved(null);
     setTab("stops");
-  };
+  }
 
   const focusOn = (lat: number, lng: number, zoom?: number) => setFocus({ lat, lng, zoom, key: Date.now() });
 

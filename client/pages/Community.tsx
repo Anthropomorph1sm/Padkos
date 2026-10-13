@@ -101,7 +101,7 @@ export function Community() {
           <div className="empty">
             <h3>No public routes {params.get("q") || province ? "match that" : "yet"}</h3>
             <p style={{ margin: 0 }}>Plan a trip, then choose Public under Save &amp; share to be the first.</p>
-            <Link className="btn primary" to="/">
+            <Link className="btn primary" to="/?new=1">
               Plan a trip
             </Link>
           </div>
