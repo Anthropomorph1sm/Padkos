@@ -62,7 +62,7 @@ export function MyTrips() {
       <div className="page-inner">
         <div className="page-head">
           <h1>My trips</h1>
-          <Link className="btn go" to="/">
+          <Link className="btn go" to="/?new=1">
             Plan a trip
           </Link>
         </div>

@@ -164,7 +164,7 @@ export function SharePanel({ trip, plan, points, update, saved, onSave, onRotate
             {saving ? <span className="spinner" /> : null}
             {saved ? "Save changes" : "Save trip"}
           </button>
-          {saved && (
+          {(saved || trip.start || trip.end || trip.stops.length > 0) && (
             <button className="btn" onClick={onNew}>
               Start a new trip
             </button>
